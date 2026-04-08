@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Dashboard — Devadeep &amp; Suchi</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #F4F6F9; color: #2C3E50; min-height: 100vh; }
+header { background: linear-gradient(135deg, #2C3E50 0%, #3498DB 100%); color: white; padding: 22px 32px 20px; }
+header h1 { font-size: 1.5rem; font-weight: 700; }
+header p { font-size: 0.82rem; opacity: 0.75; margin-top: 3px; }
+.container { max-width: 1120px; margin: 0 auto; padding: 20px 16px 40px; }
+
+/* Tab buttons */
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+.tab-btn { padding: 9px 26px; border-radius: 22px; border: none; cursor: pointer;
+  font-size: 0.92rem; font-weight: 600; background: #fff; color: #7F8C8D;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08); transition: all 0.18s; }
+.tab-btn.active { background: #3498DB; color: white; box-shadow: 0 4px 14px rgba(52,152,219,0.35); }
+
+/* Month filter */
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.filter-label { font-size: 0.8rem; font-weight: 600; color: #95A5A6; text-transform: uppercase; letter-spacing: 0.05em; }
+.month-btn { padding: 6px 14px; border-radius: 16px; border: 1.5px solid #D5D8DC; background: white;
+  font-size: 0.82rem; font-weight: 500; color: #566573; cursor: pointer; transition: all 0.15s; }
+.month-btn:hover { border-color: #3498DB; color: #3498DB; }
+.month-btn.active { background: #2C3E50; color: white; border-color: #2C3E50; }
+
+/* Summary */
+.summary-card { background: white; border-radius: 14px; padding: 18px 26px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07); display: inline-block; margin-bottom: 18px; min-width: 200px; }
+.card-label { font-size: 0.75rem; text-transform: uppercase; color: #95A5A6; letter-spacing: 0.05em; }
+.card-value { font-size: 2rem; font-weight: 700; color: #2C3E50; margin: 4px 0 2px; }
+.card-sub { font-size: 0.8rem; color: #BDC3C7; }
+
+/* Charts row */
+.charts-row { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.chart-box { background: white; border-radius: 14px; padding: 18px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+.chart-box.donut-box { flex: 0 0 310px; min-height: 340px; }
+.chart-box.bar-box { flex: 1 1 380px; min-height: 300px; }
+.chart-box h3 { font-size: 0.88rem; color: #7F8C8D; margin-bottom: 12px; font-weight: 600; }
+.chart-hint { font-size: 0.74rem; color: #BDC3C7; margin-bottom: 10px; }
+
+/* Drill-down panel */
+.drilldown-panel { display: none; background: #EBF5FB; border: 1.5px solid #AED6F1; border-radius: 10px;
+  padding: 14px 18px; margin-top: 12px; }
+.drilldown-panel.visible { display: block; }
+.drilldown-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 10px; color: #2471A3; }
+.drilldown-close { float: right; cursor: pointer; font-size: 0.78rem; color: #85C1E9; font-weight: 600; }
+.drilldown-close:hover { color: #2471A3; }
+
+/* Category cards */
+.cat-cards-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.cat-card { background: white; border-radius: 10px; padding: 13px 15px; flex: 1 1 150px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.cat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+.cat-name { font-size: 0.75rem; color: #7F8C8D; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.cat-amount { font-size: 1.2rem; font-weight: 700; color: #2C3E50; margin: 4px 0 5px; }
+.cat-bar-wrap { height: 5px; background: #ECF0F1; border-radius: 3px; margin-bottom: 3px; }
+.cat-bar { height: 5px; border-radius: 3px; }
+.cat-pct { font-size: 0.72rem; color: #BDC3C7; }
+
+/* Entries table */
+.recent-section { background: white; border-radius: 14px; padding: 18px 22px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+.recent-section h3 { font-size: 0.88rem; color: #7F8C8D; margin-bottom: 12px; font-weight: 600; }
+.entry-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.entry-table th { text-align: left; padding: 7px 11px; color: #95A5A6; font-weight: 600;
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid #ECF0F1; }
+.entry-table td { padding: 9px 11px; border-bottom: 1px solid #F4F6F9; }
+.entry-table tr:last-child td { border-bottom: none; }
+.amount { font-weight: 700; color: #2C3E50; }
+.person-badge { padding: 2px 9px; border-radius: 11px; font-size: 0.75rem; font-weight: 600; }
+.person-badge.person-devadeep { background: #D6EAF8; color: #2980B9; }
+.person-badge.person-suchi { background: #FDEDEC; color: #E74C3C; }
+.cat-badge { padding: 2px 9px; border-radius: 11px; font-size: 0.73rem; font-weight: 600; color: white; }
+.no-data { color: #BDC3C7; text-align: center; padding: 28px 0; font-size: 0.88rem; }
+footer { text-align: center; padding: 20px; font-size: 0.75rem; color: #BDC3C7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>💸 Expense Dashboard</h1>
+  <p>Devadeep &amp; Suchi &nbsp;·&nbsp; Updated 09 Apr 2026, 01:38 AM</p>
+</header>
+<div class="container">
+
+  <!-- Person tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-btn-devadeep" onclick="switchView('Devadeep')">Devadeep</button>
+    <button class="tab-btn" id="tab-btn-suchi" onclick="switchView('Suchi')">Suchi</button>
+    <button class="tab-btn" id="tab-btn-combined" onclick="switchView('Combined')">Combined</button>
+  </div>
+
+  <!-- Month filter -->
+  <div class="filter-bar">
+    <span class="filter-label">Month:</span>
+    <div id="month-filter-btns"></div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-card">
+    <div class="card-label">Total Spent</div>
+    <div class="card-value" id="total-value">₹0</div>
+    <div class="card-sub" id="total-sub">0 transactions</div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-box donut-box">
+      <h3>By Category</h3>
+      <p class="chart-hint">Click a slice to see monthly breakdown ↓</p>
+      <canvas id="donut-chart" width="270" height="270"></canvas>
+      <div class="drilldown-panel" id="drilldown-panel">
+        <span class="drilldown-close" onclick="closeDrilldown()">✕ Close</span>
+        <div class="drilldown-title" id="drilldown-title"></div>
+        <canvas id="drilldown-chart" height="160"></canvas>
+      </div>
+    </div>
+    <div class="chart-box bar-box">
+      <h3>Monthly Spending</h3>
+      <canvas id="bar-chart" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- Category cards -->
+  <div class="cat-cards-row" id="cat-cards"></div>
+
+  <!-- Entries table -->
+  <div class="recent-section">
+    <h3>Transactions</h3>
+    <div id="entries-table"></div>
+  </div>
+
+</div>
+<footer>Generated by Claude · Expense Tracker</footer>
+
+<script>
+// ─── Data ────────────────────────────────────────────────────────────────────
+const VIEW_DATA    = {"Devadeep": {"all": {"by_category": {"Groceries": 0, "Eating out": 1434.0, "Transport/Fuel": 250.0, "Ecommerce": 0, "Subscription": 149.0, "Ad hoc": 100.0}, "by_month": {"2026-04": 1933.0}, "cat_by_month": {"Groceries": {"2026-04": 0}, "Eating out": {"2026-04": 1434.0}, "Transport/Fuel": {"2026-04": 250.0}, "Ecommerce": {"2026-04": 0}, "Subscription": {"2026-04": 149.0}, "Ad hoc": {"2026-04": 100.0}}, "entries": [{"date": "2026-04-06", "person": "Devadeep", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Transport/Fuel", "amount": 250.0, "description": "Petrol"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Ad hoc", "amount": 100.0, "description": "Ad hoc"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Subscription", "amount": 149.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Eating out", "amount": 270.0, "description": "Biryani at office"}], "total": 1933.0, "count": 5}, "2026-04": {"by_category": {"Groceries": 0.0, "Eating out": 1434.0, "Transport/Fuel": 250.0, "Ecommerce": 0.0, "Subscription": 149.0, "Ad hoc": 100.0}, "by_month": {"2026-04": 1933.0}, "cat_by_month": {"Groceries": {"2026-04": 0.0}, "Eating out": {"2026-04": 1434.0}, "Transport/Fuel": {"2026-04": 250.0}, "Ecommerce": {"2026-04": 0.0}, "Subscription": {"2026-04": 149.0}, "Ad hoc": {"2026-04": 100.0}}, "entries": [{"date": "2026-04-06", "person": "Devadeep", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Transport/Fuel", "amount": 250.0, "description": "Petrol"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Ad hoc", "amount": 100.0, "description": "Ad hoc"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Subscription", "amount": 149.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Eating out", "amount": 270.0, "description": "Biryani at office"}], "total": 1933.0, "count": 5}}, "Suchi": {"all": {"by_category": {"Groceries": 894.0, "Eating out": 3042.0, "Transport/Fuel": 703.0, "Ecommerce": 0, "Subscription": 249.0, "Ad hoc": 0}, "by_month": {"2026-04": 4888.0}, "cat_by_month": {"Groceries": {"2026-04": 894.0}, "Eating out": {"2026-04": 3042.0}, "Transport/Fuel": {"2026-04": 703.0}, "Ecommerce": {"2026-04": 0}, "Subscription": {"2026-04": 249.0}, "Ad hoc": {"2026-04": 0}}, "entries": [{"date": "2026-04-08", "person": "Suchi", "category": "Groceries", "amount": 659.0, "description": "Grocery"}, {"date": "2026-04-07", "person": "Suchi", "category": "Groceries", "amount": 235.0, "description": "Grocery"}, {"date": "2026-04-06", "person": "Suchi", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Suchi", "category": "Subscription", "amount": 249.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Suchi", "category": "Transport/Fuel", "amount": 453.0, "description": "Transport"}, {"date": "2026-04-05", "person": "Suchi", "category": "Eating out", "amount": 1560.0, "description": "Eating out"}, {"date": "2026-04-03", "person": "Suchi", "category": "Eating out", "amount": 318.0, "description": "Eating out"}, {"date": "2026-04-01", "person": "Suchi", "category": "Transport/Fuel", "amount": 250.0, "description": "Fuel"}], "total": 4888.0, "count": 8}, "2026-04": {"by_category": {"Groceries": 894.0, "Eating out": 3042.0, "Transport/Fuel": 703.0, "Ecommerce": 0.0, "Subscription": 249.0, "Ad hoc": 0.0}, "by_month": {"2026-04": 4888.0}, "cat_by_month": {"Groceries": {"2026-04": 894.0}, "Eating out": {"2026-04": 3042.0}, "Transport/Fuel": {"2026-04": 703.0}, "Ecommerce": {"2026-04": 0.0}, "Subscription": {"2026-04": 249.0}, "Ad hoc": {"2026-04": 0.0}}, "entries": [{"date": "2026-04-08", "person": "Suchi", "category": "Groceries", "amount": 659.0, "description": "Grocery"}, {"date": "2026-04-07", "person": "Suchi", "category": "Groceries", "amount": 235.0, "description": "Grocery"}, {"date": "2026-04-06", "person": "Suchi", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Suchi", "category": "Subscription", "amount": 249.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Suchi", "category": "Transport/Fuel", "amount": 453.0, "description": "Transport"}, {"date": "2026-04-05", "person": "Suchi", "category": "Eating out", "amount": 1560.0, "description": "Eating out"}, {"date": "2026-04-03", "person": "Suchi", "category": "Eating out", "amount": 318.0, "description": "Eating out"}, {"date": "2026-04-01", "person": "Suchi", "category": "Transport/Fuel", "amount": 250.0, "description": "Fuel"}], "total": 4888.0, "count": 8}}, "Combined": {"all": {"by_category": {"Groceries": 894.0, "Eating out": 4476.0, "Transport/Fuel": 953.0, "Ecommerce": 0, "Subscription": 398.0, "Ad hoc": 100.0}, "by_month": {"2026-04": 6821.0}, "cat_by_month": {"Groceries": {"2026-04": 894.0}, "Eating out": {"2026-04": 4476.0}, "Transport/Fuel": {"2026-04": 953.0}, "Ecommerce": {"2026-04": 0}, "Subscription": {"2026-04": 398.0}, "Ad hoc": {"2026-04": 100.0}}, "entries": [{"date": "2026-04-08", "person": "Suchi", "category": "Groceries", "amount": 659.0, "description": "Grocery"}, {"date": "2026-04-07", "person": "Suchi", "category": "Groceries", "amount": 235.0, "description": "Grocery"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Transport/Fuel", "amount": 250.0, "description": "Petrol"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Ad hoc", "amount": 100.0, "description": "Ad hoc"}, {"date": "2026-04-06", "person": "Suchi", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Suchi", "category": "Subscription", "amount": 249.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Subscription", "amount": 149.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Suchi", "category": "Transport/Fuel", "amount": 453.0, "description": "Transport"}, {"date": "2026-04-05", "person": "Suchi", "category": "Eating out", "amount": 1560.0, "description": "Eating out"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Eating out", "amount": 270.0, "description": "Biryani at office"}, {"date": "2026-04-03", "person": "Suchi", "category": "Eating out", "amount": 318.0, "description": "Eating out"}, {"date": "2026-04-01", "person": "Suchi", "category": "Transport/Fuel", "amount": 250.0, "description": "Fuel"}], "total": 6821.0, "count": 13}, "2026-04": {"by_category": {"Groceries": 894.0, "Eating out": 4476.0, "Transport/Fuel": 953.0, "Ecommerce": 0.0, "Subscription": 398.0, "Ad hoc": 100.0}, "by_month": {"2026-04": 6821.0}, "cat_by_month": {"Groceries": {"2026-04": 894.0}, "Eating out": {"2026-04": 4476.0}, "Transport/Fuel": {"2026-04": 953.0}, "Ecommerce": {"2026-04": 0.0}, "Subscription": {"2026-04": 398.0}, "Ad hoc": {"2026-04": 100.0}}, "entries": [{"date": "2026-04-08", "person": "Suchi", "category": "Groceries", "amount": 659.0, "description": "Grocery"}, {"date": "2026-04-07", "person": "Suchi", "category": "Groceries", "amount": 235.0, "description": "Grocery"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Transport/Fuel", "amount": 250.0, "description": "Petrol"}, {"date": "2026-04-06", "person": "Devadeep", "category": "Ad hoc", "amount": 100.0, "description": "Ad hoc"}, {"date": "2026-04-06", "person": "Suchi", "category": "Eating out", "amount": 1164.0, "description": "Eating out"}, {"date": "2026-04-06", "person": "Suchi", "category": "Subscription", "amount": 249.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Subscription", "amount": 149.0, "description": "Netflix subscription"}, {"date": "2026-04-05", "person": "Suchi", "category": "Transport/Fuel", "amount": 453.0, "description": "Transport"}, {"date": "2026-04-05", "person": "Suchi", "category": "Eating out", "amount": 1560.0, "description": "Eating out"}, {"date": "2026-04-05", "person": "Devadeep", "category": "Eating out", "amount": 270.0, "description": "Biryani at office"}, {"date": "2026-04-03", "person": "Suchi", "category": "Eating out", "amount": 318.0, "description": "Eating out"}, {"date": "2026-04-01", "person": "Suchi", "category": "Transport/Fuel", "amount": 250.0, "description": "Fuel"}], "total": 6821.0, "count": 13}}};
+const ALL_MONTHS   = ["2026-04"];
+const MONTH_LABELS = {"2026-04": "Apr 2026"};
+const CATEGORIES   = ["Groceries", "Eating out", "Transport/Fuel", "Ecommerce", "Subscription", "Ad hoc"];
+const CAT_COLORS   = ["#27AE60", "#E74C3C", "#F39C12", "#3498DB", "#9B59B6", "#7F8C8D"];
+const CAT_COLOR_MAP= {"Groceries": "#27AE60", "Eating out": "#E74C3C", "Transport/Fuel": "#F39C12", "Ecommerce": "#3498DB", "Subscription": "#9B59B6", "Ad hoc": "#7F8C8D"};
+
+let currentView  = 'Devadeep';
+let currentMonth = 'all';
+let donutChart   = null;
+let barChart     = null;
+let drillChart   = null;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function fmt(n) { return '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0}); }
+
+function getMonthsForView(view) {
+  const d = VIEW_DATA[view];
+  return Object.keys(d).filter(k => k !== 'all').sort();
+}
+
+function viewData(view, month) {
+  const d = VIEW_DATA[view];
+  return d[month] || d['all'];
+}
+
+// ─── Month filter ─────────────────────────────────────────────────────────────
+function buildMonthFilter() {
+  const container = document.getElementById('month-filter-btns');
+  container.innerHTML = '';
+  const months = getMonthsForView(currentView);
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'month-btn' + (currentMonth === 'all' ? ' active' : '');
+  allBtn.textContent = 'All time';
+  allBtn.onclick = () => selectMonth('all');
+  container.appendChild(allBtn);
+
+  months.forEach(ym => {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn' + (currentMonth === ym ? ' active' : '');
+    btn.textContent = MONTH_LABELS[ym] || ym;
+    btn.onclick = () => selectMonth(ym);
+    container.appendChild(btn);
+  });
+}
+
+function selectMonth(ym) {
+  // If the selected month doesn't exist for this view, fall back to 'all'
+  const months = getMonthsForView(currentView);
+  currentMonth = (ym === 'all' || months.includes(ym)) ? ym : 'all';
+  buildMonthFilter();
+  closeDrilldown();
+  render();
+}
+
+// ─── View switch ─────────────────────────────────────────────────────────────
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-btn-' + view.toLowerCase()).classList.add('active');
+  // If current month doesn't exist in new view, reset to all
+  const months = getMonthsForView(view);
+  if (currentMonth !== 'all' && !months.includes(currentMonth)) currentMonth = 'all';
+  buildMonthFilter();
+  closeDrilldown();
+  render();
+}
+
+// ─── Main render ─────────────────────────────────────────────────────────────
+function render() {
+  const d = viewData(currentView, currentMonth);
+  const allD = viewData(currentView, 'all');
+
+  // Summary
+  document.getElementById('total-value').textContent = fmt(d.total);
+  document.getElementById('total-sub').textContent   = d.count + ' transaction' + (d.count !== 1 ? 's' : '');
+
+  renderDonut(d);
+  renderBar(allD);
+  renderCatCards(d, allD);
+  renderEntries(d.entries);
+}
+
+// ─── Donut chart ─────────────────────────────────────────────────────────────
+function renderDonut(d) {
+  const ctx = document.getElementById('donut-chart').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: CATEGORIES,
+      datasets: [{
+        data: CATEGORIES.map(c => d.by_category[c] || 0),
+        backgroundColor: CAT_COLORS,
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverBorderWidth: 3,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '58%',
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.parsed) } }
+      },
+      onClick: (evt, elements) => {
+        if (elements.length > 0) {
+          const cat = CATEGORIES[elements[0].index];
+          openDrilldown(cat);
+        }
+      }
+    }
+  });
+}
+
+// ─── Drill-down: category → monthly bar chart ─────────────────────────────────
+function openDrilldown(cat) {
+  const panel = document.getElementById('drilldown-panel');
+  const title = document.getElementById('drilldown-title');
+  panel.classList.add('visible');
+  title.textContent = cat + ' — monthly breakdown';
+  title.style.color = CAT_COLOR_MAP[cat] || '#2471A3';
+
+  const allD = viewData(currentView, 'all');
+  const catMonthly = allD.cat_by_month[cat] || {};
+  const months = Object.keys(catMonthly).sort();
+  const values = months.map(m => catMonthly[m] || 0);
+  const labels = months.map(m => MONTH_LABELS[m] || m);
+  const color  = CAT_COLOR_MAP[cat] || '#3498DB';
+
+  const ctx = document.getElementById('drilldown-chart').getContext('2d');
+  if (drillChart) drillChart.destroy();
+  drillChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: cat,
+        data: values,
+        backgroundColor: color + 'CC',
+        borderColor: color,
+        borderWidth: 1.5,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => fmt(v) }, grid: { color: '#f0f0f0' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function closeDrilldown() {
+  document.getElementById('drilldown-panel').classList.remove('visible');
+  if (drillChart) { drillChart.destroy(); drillChart = null; }
+}
+
+// ─── Monthly bar chart ─────────────────────────────────────────────────────────
+function renderBar(allD) {
+  const months = Object.keys(allD.by_month).sort();
+  const ctx = document.getElementById('bar-chart').getContext('2d');
+  if (barChart) barChart.destroy();
+  const barColor = currentView === 'Suchi' ? '#F1948A' : '#5DADE2';
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: months.map(m => MONTH_LABELS[m] || m),
+      datasets: [{
+        label: 'Total spent',
+        data: months.map(m => allD.by_month[m] || 0),
+        backgroundColor: barColor + 'CC',
+        borderColor: barColor,
+        borderWidth: 1.5,
+        borderRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      onClick: (evt, elements) => {
+        if (elements.length > 0) {
+          const ym = months[elements[0].index];
+          selectMonth(ym);
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + fmt(ctx.parsed.y),
+            title: ctx => ctx[0].label + ' — click to filter'
+          }
+        }
+      },
+      scales: {
+        y: { ticks: { callback: v => fmt(v) }, grid: { color: '#f0f0f0' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ─── Category cards ─────────────────────────────────────────────────────────
+function renderCatCards(d, allD) {
+  const container = document.getElementById('cat-cards');
+  container.innerHTML = '';
+  const total = d.total || 1;
+  CATEGORIES.forEach((cat, i) => {
+    const amt = d.by_category[cat] || 0;
+    const pct = (amt / total * 100).toFixed(1);
+    const color = CAT_COLORS[i];
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.title = 'Click to see ' + cat + ' monthly breakdown';
+    card.innerHTML = `
+      <div class="cat-name">${cat}</div>
+      <div class="cat-amount">${fmt(amt)}</div>
+      <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%;background:${color}"></div></div>
+      <div class="cat-pct">${pct}%</div>`;
+    card.onclick = () => openDrilldown(cat);
+    container.appendChild(card);
+  });
+}
+
+// ─── Entries table ────────────────────────────────────────────────────────────
+function renderEntries(entries) {
+  const container = document.getElementById('entries-table');
+  if (!entries || entries.length === 0) {
+    container.innerHTML = "<p class='no-data'>No expenses recorded yet.</p>";
+    return;
+  }
+  const rows = entries.slice(0, 20);
+  let html = `<table class="entry-table">
+    <thead><tr><th>Date</th><th>Person</th><th>Category</th><th>Amount</th><th>Description</th></tr></thead>
+    <tbody>`;
+  rows.forEach(e => {
+    const cc = CAT_COLOR_MAP[e.category] || '#95A5A6';
+    html += `<tr>
+      <td>${e.date}</td>
+      <td><span class="person-badge person-${e.person.toLowerCase()}">${e.person}</span></td>
+      <td><span class="cat-badge" style="background:${cc}">${e.category}</span></td>
+      <td class="amount">${fmt(e.amount)}</td>
+      <td>${e.description}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildMonthFilter();
+render();
+</script>
+</body>
+</html>
